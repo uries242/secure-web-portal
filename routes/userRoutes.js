@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const passport = require('../config/passport');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const { signToken } = require('../utils/auth');
@@ -14,11 +15,9 @@ router.post('/register', async (req, res) => {
       return res.status(409).json({ message: 'Email already in use' });
     }
 
-    const hashed = await bcrypt.hash(password, 12);
-
     const user = await User.create({
       email,
-      password: hashed,
+      password, 
       displayName,
     });
 
@@ -52,5 +51,19 @@ router.post('/login', async (req, res) => {
     res.status(500).json({ message: 'Server error', error: err.message });
   }
 });
+
+// GET /api/users/github
+router.get('/auth/github',
+  passport.authenticate('github', { session: false, scope: ['user:email'] })
+);
+
+// GET /api/users/auth/github/callback
+router.get('/auth/github/callback',
+  passport.authenticate('github', { session: false, failureRedirect: '/login' }),
+  (req, res) => {
+    const token = signToken(req.user);
+    res.redirect(`/?token=${token}`);
+  }
+);
 
 module.exports = router;
